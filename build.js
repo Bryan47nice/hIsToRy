@@ -150,7 +150,7 @@ const html = `<!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>同學會 App 版本更新看板</title>
-<style>body{margin:0;font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:#0f1115;color:#e8eaed}
+<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:#0f1115;color:#e8eaed}
 #gate{max-width:340px;margin:18vh auto;padding:26px;background:#1a1d24;border:1px solid #2a2e37;border-radius:14px;text-align:center}
 #gate h2{font-size:18px;margin:0 0 4px}#gate p{color:#9aa0a6;font-size:13px;margin:0 0 16px}
 .pw-wrap{position:relative;margin-bottom:10px}
