@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>爬樓梯簽到 · 入口</title>
+<!--
+  爬樓梯吃早餐活動的「QR 中繼頁」。
+  QR code 指到這裡（github.io 不受 Google 帳號路由影響，人人開得了），
+  再由這頁把人送去 Apps Script 簽到頁。之後換部署網址只要改下面 EXEC 一行，
+  QR 永遠不用重印。與本 repo 的加密看板（index.html / build.js）完全無關。
+-->
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background-color: #f4654e; color: #2b2740;
+    background-image:
+      radial-gradient(rgba(255,255,255,.5) 1.5px, transparent 1.5px),
+      radial-gradient(rgba(255,255,255,.25) 1.5px, transparent 1.5px);
+    background-size: 46px 46px, 46px 46px; background-position: 0 0, 23px 23px;
+  }
+  body.coffee { background-color: #c98a4b; }
+  .card {
+    width: min(92vw, 420px); background: #fff6e6; border: 4px solid #2b2740;
+    box-shadow: 6px 6px 0 #2b2740; padding: 28px 22px calc(24px + env(safe-area-inset-bottom));
+    text-align: center; margin: 24px 0;
+  }
+  .emoji { font-size: 44px; margin-bottom: 6px; }
+  h1 { font-size: 22px; font-weight: 900; margin: 0 0 4px; }
+  .sub { font-size: 14px; font-weight: 700; color: #9a7b52; margin: 0 0 20px; }
+  a.btn {
+    display: block; text-decoration: none; text-align: center;
+    border: 3px solid #2b2740; padding: 16px; font-size: 18px; font-weight: 900;
+    box-shadow: 4px 4px 0 #2b2740; background: #e2231a; color: #fff; margin-bottom: 14px;
+  }
+  a.btn:active { transform: translate(4px,4px); box-shadow: 0 0 0 #2b2740; }
+  .fallback { border-top: 3px dashed #efd9ad; margin-top: 8px; padding-top: 14px; }
+  .fallback p { font-size: 13px; font-weight: 700; color: #9a7b52; margin: 0 0 10px; }
+  a.btn2 {
+    display: block; text-decoration: none; border: 3px solid #2b2740; padding: 12px;
+    font-size: 15px; font-weight: 900; box-shadow: 3px 3px 0 #2b2740;
+    background: #fdeccb; color: #2b2740; margin-bottom: 10px;
+  }
+  a.btn2:active { transform: translate(3px,3px); box-shadow: 0 0 0 #2b2740; }
+  .staff { font-size: 12px; color: #9a7b52; font-weight: 600; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji" id="emoji">🍳</div>
+    <h1 id="title">爬樓梯吃早餐 · 20F 領餐</h1>
+    <p class="sub" id="sub">按下面按鈕進入簽到頁</p>
+    <a class="btn" id="go" href="#">🏃 開啟簽到頁 GO!</a>
+    <div class="fallback">
+      <p>按了沒反應、或出現「無法開啟這個檔案」？</p>
+      <a class="btn2" id="alt" href="#">改用這個開啟（備用通道）</a>
+      <p class="staff">還是不行請直接找現場工作人員，口頭報名字一樣可以領！</p>
+    </div>
+  </div>
+  <script>
+    // 之後若換部署，只要改這一行的網址，QR 不用重印
+    var EXEC = 'https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec';
+
+    var isCoffee = /type=coffee/.test(location.search);
+    var type = isCoffee ? 'coffee' : 'breakfast';
+    if (isCoffee) {
+      document.body.classList.add('coffee');
+      document.getElementById('emoji').textContent = '☕';
+      document.getElementById('title').textContent = '爬樓梯拿咖啡券 · 22F';
+    }
+    // 主通道：一般路徑。備用通道：強制走第一個 Google 帳號（u/0），
+    // 解掉「session 裡第二個帳號壞掉/被擋，Google 卻挑了它」的問題。
+    document.getElementById('go').href = EXEC + '?type=' + type;
+    document.getElementById('alt').href =
+      EXEC.replace('/macros/s/', '/macros/u/0/s/') + '?type=' + type;
+  </script>
+</body>
+</html>

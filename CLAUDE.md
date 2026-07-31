@@ -73,3 +73,7 @@ BOARD_PASSWORD=<密碼> node build.js     # 產生 index.html
 ## 使用者的協作偏好
 
 採「先對齊規格、再開發」的三步工作流：需求 →(1) 診斷＋架構提案後停下問 OK →(2) 使用者確認 →(3) 才全量交付完整程式碼＋commit 紀錄。交付多檔時，每個檔案的程式碼與其 commit 紀錄綁在同一段。回覆精簡。
+
+## 額外檔案：checkin.html（別刪）
+
+`checkin.html` 是「爬樓梯吃早餐」活動 QR 的中繼頁，與本看板（index.html / build.js）無關、不參與 build 流程。QR 印的是這頁的網址；活動換 Apps Script 部署時只改檔內 `EXEC` 那一行，QR 不用重印。
