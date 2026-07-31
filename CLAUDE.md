@@ -76,4 +76,4 @@ BOARD_PASSWORD=<密碼> node build.js     # 產生 index.html
 
 ## 額外檔案：checkin.html（別刪）
 
-`checkin.html` 是「爬樓梯吃早餐」活動 QR 的中繼頁，與本看板（index.html / build.js）無關、不參與 build 流程。QR 印的是這頁的網址；活動換 Apps Script 部署時只改檔內 `EXEC` 那一行，QR 不用重印。
+`checkin.html` 是「爬樓梯吃早餐」活動的靜態簽到頁（由 D:健康生活組make_static.js 從 Index.html 產生），與本看板（index.html / build.js）無關、不參與 build 流程。資料走匿名 fetch 打 Apps Script API，繞過 Google 帳號路由。QR 印的是這頁的網址；換部署時改 make_static.js 的 EXEC 重跑再 push，QR 不用重印。

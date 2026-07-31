@@ -1,81 +1,669 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>爬樓梯簽到 · 入口</title>
-<!--
-  爬樓梯吃早餐活動的「QR 中繼頁」。
-  QR code 指到這裡（github.io 不受 Google 帳號路由影響，人人開得了），
-  再由這頁把人送去 Apps Script 簽到頁。之後換部署網址只要改下面 EXEC 一行，
-  QR 永遠不用重印。與本 repo 的加密看板（index.html / build.js）完全無關。
--->
-<style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background-color: #f4654e; color: #2b2740;
-    background-image:
-      radial-gradient(rgba(255,255,255,.5) 1.5px, transparent 1.5px),
-      radial-gradient(rgba(255,255,255,.25) 1.5px, transparent 1.5px);
-    background-size: 46px 46px, 46px 46px; background-position: 0 0, 23px 23px;
-  }
-  body.coffee { background-color: #c98a4b; }
-  .card {
-    width: min(92vw, 420px); background: #fff6e6; border: 4px solid #2b2740;
-    box-shadow: 6px 6px 0 #2b2740; padding: 28px 22px calc(24px + env(safe-area-inset-bottom));
-    text-align: center; margin: 24px 0;
-  }
-  .emoji { font-size: 44px; margin-bottom: 6px; }
-  h1 { font-size: 22px; font-weight: 900; margin: 0 0 4px; }
-  .sub { font-size: 14px; font-weight: 700; color: #9a7b52; margin: 0 0 20px; }
-  a.btn {
-    display: block; text-decoration: none; text-align: center;
-    border: 3px solid #2b2740; padding: 16px; font-size: 18px; font-weight: 900;
-    box-shadow: 4px 4px 0 #2b2740; background: #e2231a; color: #fff; margin-bottom: 14px;
-  }
-  a.btn:active { transform: translate(4px,4px); box-shadow: 0 0 0 #2b2740; }
-  .fallback { border-top: 3px dashed #efd9ad; margin-top: 8px; padding-top: 14px; }
-  .fallback p { font-size: 13px; font-weight: 700; color: #9a7b52; margin: 0 0 10px; }
-  a.btn2 {
-    display: block; text-decoration: none; border: 3px solid #2b2740; padding: 12px;
-    font-size: 15px; font-weight: 900; box-shadow: 3px 3px 0 #2b2740;
-    background: #fdeccb; color: #2b2740; margin-bottom: 10px;
-  }
-  a.btn2:active { transform: translate(3px,3px); box-shadow: 0 0 0 #2b2740; }
-  .staff { font-size: 12px; color: #9a7b52; font-weight: 600; margin: 12px 0 0; }
-</style>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!--
+    字體用「非阻塞」方式載入：media="print" 讓瀏覽器不把它當成 render-blocking 資源，
+    載完再切回 all。中文字體檔很大，這樣畫面不用等字體下載完才出現。
+    （font-family 已經有 PingFang TC / 微軟正黑體 當後備，加上 display=swap，切換不會閃爛版。）
+    weight 只留 700/900，實際有用到的就這兩級，少載一組字重檔。
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@700;900&display=swap"
+        rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@700;900&display=swap" rel="stylesheet">
+  </noscript>
+  <style>
+    :root {
+      --coral: #f4654e;
+      --coral-deep: #d9462f;
+      --cream: #fff6e6;
+      --cream-2: #fdeccb;
+      --cream-line: #efd9ad;
+      --ink: #2b2740;
+      --red: #e2231a;          /* CMoney 品牌紅（主按鈕） */
+      --red-deep: #a3120c;
+      --blue: #2e9bd6;
+      --blue-deep: #1d6fa3;
+      --yellow: #ffce2e;
+      --yellow-deep: #d89e00;
+      --green: #38b24a;
+      --green-deep: #277e34;
+      --accent: var(--blue);   /* 隨模式切換：早餐=藍、咖啡券=咖啡棕 */
+      --pix: 'Press Start 2P', monospace;
+    }
+    body.mode-coffee { --coral: #c98a4b; --coral-deep: #a96f33; --accent: #6f4e37; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Sans TC", -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      color: var(--ink);
+      background-color: var(--coral);
+      background-image:
+        radial-gradient(rgba(255,255,255,.55) 1.5px, transparent 1.5px),
+        radial-gradient(rgba(255,255,255,.28) 1.5px, transparent 1.5px);
+      background-size: 46px 46px, 46px 46px;
+      background-position: 0 0, 23px 23px;
+      min-height: 100vh;
+      image-rendering: pixelated;
+      overflow-x: hidden;
+    }
+    .pix, .title-pix, .winners, .goal-tag, .toggle button, .ordinal,
+    .person-sub, .ordinal-label, .sheet h2.label { overflow-wrap: anywhere; }
+    .app { max-width: 520px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+    .pix { font-family: var(--pix); letter-spacing: 0; line-height: 1.5; }
+
+    /* ---------- 頂部橫幅 ---------- */
+    header {
+      position: relative; overflow: hidden; text-align: center; padding: 18px 16px 22px;
+      background: radial-gradient(circle at 50% 18%, #ff8a5c 0%, var(--coral) 60%);
+    }
+    body.mode-coffee header { background: radial-gradient(circle at 50% 18%, #e0aa6e 0%, var(--coral) 60%); }
+    header::before {
+      content: ""; position: absolute; top: -70px; left: 50%; width: 360px; height: 360px;
+      transform: translateX(-50%); z-index: 0; opacity: .5;
+      background: repeating-conic-gradient(from 0deg at 50% 50%, var(--yellow) 0deg 10deg, transparent 10deg 20deg);
+      -webkit-mask-image: radial-gradient(circle, #000 38%, transparent 60%);
+      mask-image: radial-gradient(circle, #000 38%, transparent 60%);
+    }
+    header > * { position: relative; z-index: 1; }
+    .goal-tag {
+      display: inline-block; font-family: var(--pix); font-size: 10px; color: var(--ink);
+      background: var(--yellow); padding: 7px 12px; border: 3px solid var(--ink);
+      box-shadow: 3px 3px 0 var(--ink); margin-bottom: 10px;
+    }
+    .winners { font-size: clamp(22px, 7vw, 30px); letter-spacing: 2px; margin: 2px 0 6px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,.25)); }
+    .title-pix {
+      font-family: var(--pix); font-size: clamp(11px, 3.6vw, 17px); color: #fff; margin: 4px 0 8px;
+      text-shadow: 3px 3px 0 var(--red-deep), -1px -1px 0 var(--red-deep);
+    }
+    h1 { font-size: clamp(19px, 6vw, 26px); font-weight: 900; margin: 0 0 6px; color: #fff; text-shadow: 2px 2px 0 var(--coral-deep); }
+    .event-sign {
+      display: inline-block; font-size: 13px; font-weight: 700; color: var(--ink);
+      background: var(--cream); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 6px 12px;
+    }
+    .stairs { display: flex; align-items: flex-end; justify-content: center; height: 16px; margin-top: 14px; }
+    .stairs span { width: 16px; background: var(--accent); border-top: 3px solid rgba(255,255,255,.55); }
+
+    main { flex: 1; padding: 16px 14px 30px; }
+
+    .toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+    .toggle button {
+      flex: 1; font-family: var(--pix); font-size: 9px; padding: 12px 0; cursor: pointer;
+      color: var(--ink); background: var(--cream); border: 3px solid var(--ink);
+      box-shadow: 3px 3px 0 var(--ink); transition: transform .05s, box-shadow .05s;
+    }
+    .toggle button.active { background: var(--accent); color: #fff; }
+    .toggle button:active { transform: translate(3px,3px); box-shadow: 0 0 0 var(--ink); }
+
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-wrap input {
+      width: 100%; padding: 15px 14px 15px 46px; font-size: 17px; font-weight: 700;
+      color: var(--ink); background: var(--cream); border: 3px solid var(--ink);
+      box-shadow: 3px 3px 0 var(--ink); outline: none; font-family: inherit;
+    }
+    .search-wrap input::placeholder { color: #b08c63; font-weight: 600; }
+    .search-wrap .ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; }
+    .hint { color: #fff; font-size: 13px; text-align: center; margin: 12px 0 0; font-weight: 700; text-shadow: 1px 1px 0 var(--coral-deep); }
+
+    .list { list-style: none; margin: 4px 0 0; padding: 0; }
+    .list li {
+      background: var(--cream); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
+      padding: 13px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; transition: transform .05s, box-shadow .05s;
+    }
+    .list li:active { transform: translate(3px,3px); box-shadow: 0 0 0 var(--ink); }
+    .list li.done, .list li.locked { opacity: .55; }
+    .person-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .runner { font-size: 22px; }
+    .person-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .person-name { font-size: 18px; font-weight: 900; }
+    .person-sub { font-family: var(--pix); font-size: 8px; color: #9a7b52; }
+    .badge { font-size: 12px; font-weight: 900; padding: 6px 10px; white-space: nowrap; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+    .badge.meat { background: #ffd8d2; color: #b3261b; }
+    .badge.veg { background: #cdeecd; color: var(--green-deep); }
+    .badge.coffee { background: #e7d3b8; color: #6f4e37; }
+    .badge.done { background: #e7ddc6; color: #8a7350; box-shadow: none; }
+    .badge.locked { background: #e3e0d6; color: #9a958a; box-shadow: none; }
+
+    .state { text-align: center; color: var(--ink); padding: 30px 18px; background: var(--cream); border: 3px dashed var(--ink); font-weight: 700; line-height: 1.7; }
+    .spinner {
+      width: 30px; height: 30px; margin: 0 auto 12px;
+      background:
+        linear-gradient(var(--blue) 0 0) 0 0/8px 8px no-repeat,
+        linear-gradient(var(--red) 0 0) 22px 0/8px 8px no-repeat,
+        linear-gradient(var(--yellow) 0 0) 0 22px/8px 8px no-repeat,
+        linear-gradient(var(--green) 0 0) 22px 22px/8px 8px no-repeat;
+      animation: spin .7s steps(4) infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .overlay {
+      position: fixed; inset: 0; background: rgba(43,39,64,.62); display: flex; align-items: flex-end;
+      justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity .15s;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .sheet {
+      background: var(--cream); width: 100%; max-width: 520px; border: 4px solid var(--ink); border-bottom: 0;
+      padding: 22px 20px calc(22px + env(safe-area-inset-bottom)); transform: translateY(24px); transition: transform .18s;
+    }
+    .overlay.show .sheet { transform: translateY(0); }
+    .sheet h2.label { font-family: var(--pix); font-size: 10px; color: #9a7b52; text-align: center; margin: 0 0 12px; }
+    .confirm-name { text-align: center; font-size: clamp(24px, 7vw, 32px); font-weight: 900; margin: 2px 0 16px; word-break: break-word; }
+    /* 純資訊用「扁平」樣式：無框無陰影，跟下面真正能按的 .btn 明確做出視覺區隔 */
+    .meal-card {
+      border-radius: 999px; padding: 11px 18px; text-align: center;
+      font-size: 14px; font-weight: 700; line-height: 1.5; margin: 0 0 20px; background: #cdeecd; color: var(--green-deep);
+    }
+    .meal-card.meat { background: #ffd8d2; color: #b3261b; }
+    .meal-card.coffee { background: #e7d3b8; color: #6f4e37; }
+
+    .hint-arrow {
+      text-align: center; font-family: var(--pix); font-size: 10px; color: var(--red-deep);
+      margin: 0 0 10px; animation: pulseText 1.4s ease-in-out 2;
+    }
+    @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+    .pulse-once { animation: pulseBtn .8s ease-in-out 2; }
+    @keyframes pulseBtn {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.045); box-shadow: 6px 6px 0 var(--ink); }
+    }
+
+    .btn {
+      width: 100%; border: 3px solid var(--ink); padding: 15px; font-size: 17px; font-weight: 900;
+      cursor: pointer; font-family: inherit; box-shadow: 4px 4px 0 var(--ink); transition: transform .05s, box-shadow .05s;
+    }
+    .btn:active { transform: translate(4px,4px); box-shadow: 0 0 0 var(--ink); }
+    .btn-primary { background: var(--red); color: #fff; }
+    .btn-ghost { background: var(--cream-2); color: var(--ink); margin-top: 10px; box-shadow: 3px 3px 0 var(--ink); }
+    .btn[disabled] { opacity: .6; cursor: default; }
+
+    .result { text-align: center; }
+    .result .icon-circle {
+      width: 92px; height: 92px; margin: 2px auto 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 46px; border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+    }
+    .result.success .icon-circle { background: var(--green); color: #fff; animation: pop .35s steps(3); }
+    .result.already .icon-circle { background: var(--yellow); color: var(--ink); }
+    .result.error .icon-circle, .result.locked .icon-circle { background: #ffd8d2; color: var(--red-deep); }
+    @keyframes pop { 0% { transform: scale(.2); } 100% { transform: scale(1); } }
+    .result h2 { font-size: 24px; margin: 0 0 6px; font-weight: 900; }
+    .result p { color: #6b5a3c; font-size: 15px; margin: 0 0 4px; font-weight: 700; }
+    .result .meal-line { color: var(--ink); font-weight: 900; }
+    .ordinal-wrap { margin: 16px 0 4px; }
+    .ordinal-label { font-family: var(--pix); font-size: 9px; color: #9a7b52; }
+    .ordinal {
+      display: inline-block; margin-top: 8px; font-family: var(--pix); font-size: clamp(16px, 5.2vw, 22px); color: var(--ink);
+      background: var(--yellow); border: 4px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 12px 18px; max-width: 100%;
+    }
+    .err-msg { color: var(--red-deep); font-size: 14px; margin-top: 8px; font-weight: 700; }
+
+    /* ---------- 毛巾（爬樓梯滿 N 次的 BONUS） ---------- */
+    .towel-sep { height: 3px; background: var(--cream-line); margin: 20px 0 16px; }
+    /* 純資訊用扁平樣式，跟下面能按的 .btn 明確做出視覺區隔（同 .meal-card 的規則） */
+    .towel-card {
+      border-radius: 999px; padding: 11px 18px; text-align: center;
+      font-size: 14px; font-weight: 700; line-height: 1.6; margin: 0 0 12px;
+      background: #e7ddc6; color: #7a6540;
+    }
+    .towel-card.hit { background: var(--yellow); color: var(--ink); }
+    .towel-card.warn { background: #ffd8d2; color: var(--red-deep); }
+  </style>
 </head>
 <body>
-  <div class="card">
-    <div class="emoji" id="emoji">🍳</div>
-    <h1 id="title">爬樓梯吃早餐 · 20F 領餐</h1>
-    <p class="sub" id="sub">按下面按鈕進入簽到頁</p>
-    <a class="btn" id="go" href="#">🏃 開啟簽到頁 GO!</a>
-    <div class="fallback">
-      <p>按了沒反應、或出現「無法開啟這個檔案」？</p>
-      <a class="btn2" id="alt" href="#">改用這個開啟（備用通道）</a>
-      <p class="staff">還是不行請直接找現場工作人員，口頭報名字一樣可以領！</p>
-    </div>
-  </div>
-  <script>
-    // 之後若換部署，只要改這一行的網址，QR 不用重印
-    var EXEC = 'https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec';
+  <div class="app">
+    <header>
+      <div class="goal-tag" id="goalTag">★ GOAL · 20F ★</div>
+      <div class="winners" id="winners">☕ 🔺 🍳 🍞 🍙</div>
+      <div class="title-pix" id="titlePix">STEP UP TO WIN</div>
+      <h1 id="bigTitle">爬樓梯吃早餐 · 領餐簽到</h1>
+      <div class="event-sign" id="eventName">載入中…</div>
+      <div class="stairs">
+        <span style="height:4px"></span><span style="height:7px"></span><span style="height:10px"></span>
+        <span style="height:13px"></span><span style="height:16px"></span><span style="height:13px"></span>
+        <span style="height:10px"></span><span style="height:7px"></span><span style="height:4px"></span>
+      </div>
+    </header>
 
-    var isCoffee = /type=coffee/.test(location.search);
-    var type = isCoffee ? 'coffee' : 'breakfast';
-    if (isCoffee) {
-      document.body.classList.add('coffee');
-      document.getElementById('emoji').textContent = '☕';
-      document.getElementById('title').textContent = '爬樓梯拿咖啡券 · 22F';
+    <main>
+      <div class="toggle">
+        <button id="tabName" class="active" onclick="setMode('name')">姓名 NAME</button>
+        <button id="tabId" onclick="setMode('id')">員編 ID</button>
+      </div>
+      <div class="search-wrap">
+        <span class="ico" id="searchIco">🔍</span>
+        <input id="search" type="text" autocomplete="off" placeholder="輸入你的姓名…" oninput="render()">
+      </div>
+      <div id="content"><div class="state"><div class="spinner"></div>名單載入中…</div></div>
+      <p class="hint" id="hint"></p>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay"><div class="sheet" id="sheetBody"></div></div>
+
+  <script>
+  // 靜態版設定：資料走匿名 fetch 打 Apps Script API（不帶 cookie＝不受帳號路由影響）
+  window.CHECKIN_API_BASE = 'https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec';
+  // API 打不通時的降級：給出直接開 /exec 的按鈕（含 u/0 備用通道）
+  window.STATIC_FALLBACK = function () {
+    var type = /[?&]type=coffee/.test(location.search) ? 'coffee' : 'breakfast';
+    document.getElementById('eventName').textContent = '連線備援模式';
+    document.getElementById('content').innerHTML =
+      '<div class="state">😵 即時連線失敗，改用直接開啟：<br><br>' +
+      '<a class="btn btn-primary" style="display:block;text-decoration:none;margin-bottom:10px" href="https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type + '">開啟簽到頁</a>' +
+      '<a class="btn btn-ghost" style="display:block;text-decoration:none" href="https://script.google.com/macros/u/0/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type + '">備用通道</a>' +
+      '<br><span style="font-size:13px;font-weight:600">還是不行請找現場工作人員，口頭報名字一樣可以領！</span></div>';
+  };
+</script>
+  <script>
+    // 由後端注入；若以靜態檔案開啟（未經 Apps Script），預設早餐模式
+    var APP_MODE = /[?&]type=coffee/.test(location.search) ? 'coffee' : 'breakfast';
+    if (!/^(breakfast|coffee)$/.test(APP_MODE)) APP_MODE = 'breakfast';
+    var IS_COFFEE = (APP_MODE === 'coffee');
+
+    var THEME = {
+      breakfast: {
+        goal: '★ GOAL · 20F ★', winners: '☕ 🔺 🍳 🍞 🍙', titlePix: 'STEP UP TO WIN',
+        big: '爬樓梯吃早餐 · 20F 領餐', emptyVerb: '找到自己、開始登頂領早餐！',
+        confirmLabel: '還差最後一步', getBtn: '✓ 確認領早餐 GET!',
+        successTitle: '登頂 20F · 早餐 GET!', rankLabel: 'BREAKFAST RANK', rankNoun: '位領早餐'
+      },
+      coffee: {
+        goal: '★ BONUS · 22F ★', winners: '☕ ☕ ☕', titlePix: 'ONE MORE FLOOR!',
+        big: '爬樓梯拿咖啡券 · 22F', emptyVerb: '找到自己、再登頂領咖啡券！',
+        confirmLabel: '還差最後一步', getBtn: '✓ 確認領咖啡券 GET!',
+        successTitle: '再登 22F · 咖啡券 GET!', rankLabel: 'COFFEE RANK', rankNoun: '位領咖啡券'
+      }
+    };
+    var T = THEME[APP_MODE];
+
+    var PEOPLE = [], MODE = 'name', selected = null, loadError = null;
+
+    /**
+     * 傳輸層：GAS 直接服務時走 google.script.run；
+     * 靜態版（GitHub Pages）由建置腳本注入 CHECKIN_API_BASE，改走匿名 fetch——
+     * 跨網域 fetch 不帶 cookie，繞過 Google 帳號路由（帳號 session 壞掉也照常能用）。
+     */
+    var API_BASE = (typeof window !== 'undefined' && window.CHECKIN_API_BASE) || '';
+    function rpc(method, params, onOk, onErr) {
+      if (!API_BASE && typeof google !== 'undefined' && google.script && google.script.run) {
+        var chain = google.script.run.withSuccessHandler(onOk).withFailureHandler(onErr);
+        if (method === 'getRoster') chain.getRoster(params.type);
+        else if (method === 'checkIn') chain.checkIn(params.type, params.row, params.id);
+        else chain.redeemTowel(params.id);
+        return;
+      }
+      var apiName = { getRoster: 'roster', checkIn: 'checkin', redeemTowel: 'towel' }[method];
+      var qs = 'api=' + apiName +
+        (params.type ? '&type=' + encodeURIComponent(params.type) : '') +
+        (params.row ? '&row=' + encodeURIComponent(params.row) : '') +
+        (params.id ? '&id=' + encodeURIComponent(params.id) : '');
+      fetch(API_BASE + '?' + qs)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(onOk)
+        .catch(onErr);
     }
-    // 主通道：一般路徑。備用通道：強制走第一個 Google 帳號（u/0），
-    // 解掉「session 裡第二個帳號壞掉/被擋，Google 卻挑了它」的問題。
-    document.getElementById('go').href = EXEC + '?type=' + type;
-    document.getElementById('alt').href =
-      EXEC.replace('/macros/s/', '/macros/u/0/s/') + '?type=' + type;
+
+    /**
+     * 效能量測：把一次 google.script.run 的耗時拆成三段印到 console。
+     *   前端往返 = 使用者實際等待的時間
+     *   伺服器端 = 後端跑試算表的時間（後端回傳的 serverMs）
+     *   網路+GAS = 兩者相減，是 Apps Script 沙箱 RPC 與網路的固定成本，程式改不動
+     * 現場如果覺得慢，開 console 看這三個數字就知道該往哪邊調。
+     */
+    function logTiming(label, startMs, res) {
+      if (!window.console || !console.log) return;
+      var total = Date.now() - startMs;
+      var server = (res && typeof res.serverMs === 'number') ? res.serverMs : null;
+      console.log('[' + label + '] 前端往返 ' + total + 'ms'
+        + (server === null ? '' : ('　伺服器端 ' + server + 'ms　網路+GAS框架 ' + (total - server) + 'ms')));
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function isVeg(meal) { return /素/.test(meal || ''); }
+    function shortMeal(meal) {
+      var m = String(meal || '');
+      var afterColon = m.split(/[：:]/).pop();
+      return afterColon.replace(/[（(].*$/, '').trim() || m.trim();
+    }
+    function redeemedOf(p) { return IS_COFFEE ? p.coffeeRedeemed : p.breakfastRedeemed; }
+
+    // 毛巾只在早餐模式出現（爬樓梯的那一次＝領早餐那一次），咖啡券模式完全不顯示
+    var TOWEL_ON = !IS_COFFEE;
+    var TOWEL_THRESHOLD = 3;   // 由 loadRoster 從後端回傳值覆寫
+
+    /**
+     * 算某個人現在的毛巾狀態。
+     * total 在前端算，不在後端算——後端只給不含今天的 towelBase，
+     * 因為 getRoster 是開頁時跑的，那時候使用者還沒領早餐。
+     * 這樣按完「確認領早餐」之後重新渲染，狀態才會正確變成 eligible。
+     */
+    function towelStateOf(p) {
+      if (!TOWEL_ON || !p) return null;
+      if (p.towelBase === null || p.towelBase === undefined) return null;
+      if (p.towelBlocked) return { state: 'blocked', total: 0, time: '' };
+      var total = p.towelBase + (p.breakfastRedeemed ? 1 : 0);
+      if (p.towelRedeemed) return { state: 'redeemed', total: total, time: p.towelTime || '' };
+      if (total >= TOWEL_THRESHOLD) return { state: 'eligible', total: total, time: '' };
+      return { state: 'progress', total: total, time: '' };
+    }
+
+    /** 產生毛巾區塊的 HTML。不該顯示時回空字串。 */
+    function towelBlockHtml(p) {
+      var st = towelStateOf(p);
+      if (!st) return '';
+
+      if (st.state === 'blocked') {
+        return '<div class="towel-sep"></div>' +
+          '<div class="towel-card warn">🏅 毛巾資料需要人工確認<br>' +
+          '<span style="font-size:13px">請洽現場工作人員</span></div>';
+      }
+      if (st.state === 'redeemed') {
+        return '<div class="towel-sep"></div>' +
+          '<div class="towel-card">🏅 活動毛巾' +
+          (st.time ? '　已於 ' + esc(st.time) + ' 領取' : '　已領取') + '</div>';
+      }
+      if (st.state === 'eligible') {
+        return '<div class="towel-sep"></div>' +
+          '<h2 class="label">🏅 BONUS</h2>' +
+          '<div class="towel-card hit">你已經爬滿 ' + TOWEL_THRESHOLD + ' 次了！<br>可以領一條活動毛巾</div>' +
+          '<div class="hint-arrow">⬇ 拿到毛巾之後再按</div>' +
+          '<button class="btn btn-primary" id="towelBtn" onclick="confirmTowel()">✓ 確認領毛巾 GET!</button>';
+      }
+      // progress
+      return '<div class="towel-sep"></div>' +
+        '<div class="towel-card">🏅 毛巾進度 ' + st.total + ' / ' + TOWEL_THRESHOLD + '<br>' +
+        '<span style="font-size:13px">再爬 ' + (TOWEL_THRESHOLD - st.total) + ' 次就有活動毛巾！</span></div>';
+    }
+
+    function applyTheme() {
+      if (IS_COFFEE) document.body.classList.add('mode-coffee');
+      document.getElementById('goalTag').textContent = T.goal;
+      document.getElementById('winners').textContent = T.winners;
+      document.getElementById('titlePix').textContent = T.titlePix;
+      document.getElementById('bigTitle').textContent = T.big;
+    }
+
+    function setMode(mode) {
+      MODE = mode;
+      document.getElementById('tabName').classList.toggle('active', mode === 'name');
+      document.getElementById('tabId').classList.toggle('active', mode === 'id');
+      var input = document.getElementById('search');
+      input.value = '';
+      input.placeholder = mode === 'name' ? '輸入你的姓名…' : '輸入你的員編…';
+      input.setAttribute('inputmode', mode === 'id' ? 'numeric' : 'text');
+      document.getElementById('searchIco').textContent = mode === 'name' ? '🔍' : '#️⃣';
+      input.focus();
+      render();
+    }
+
+    function loadRoster() {
+      var t0 = Date.now();
+      rpc('getRoster', { type: APP_MODE },
+        function (res) {
+          logTiming('getRoster 名單載入', t0, res);
+          if (!res || !res.ok) {
+            loadError = (res && res.message) || '名單載入失敗。';
+            document.getElementById('eventName').textContent = '設定有誤';
+            render();
+            return;
+          }
+          PEOPLE = res.people || [];
+          if (typeof res.towelThreshold === 'number' && res.towelThreshold > 0) {
+            TOWEL_THRESHOLD = res.towelThreshold;
+          }
+          if (res.towelError && window.console) console.log('[毛巾資料讀取失敗] ' + res.towelError);
+          document.getElementById('eventName').textContent = (res.eventName || '') + '　共 ' + PEOPLE.length + ' 人';
+          render();
+        },
+        function (err) {
+          // 靜態版可注入 STATIC_FALLBACK：API 打不通時退回「直接開 /exec」的按鈕頁
+          if (typeof window !== 'undefined' && window.STATIC_FALLBACK) { window.STATIC_FALLBACK(); return; }
+          loadError = (err && err.message) || '連線失敗，請重新整理。';
+          render();
+        });
+    }
+
+    function render() {
+      var box = document.getElementById('content');
+      var hint = document.getElementById('hint');
+      hint.textContent = '';
+
+      if (loadError) { box.innerHTML = '<div class="state">⚠️ ' + esc(loadError) + '</div>'; return; }
+      var q = document.getElementById('search').value.trim();
+      if (!q) {
+        box.innerHTML = '<div class="state">🏃 在上方輸入' + (MODE === 'name' ? '姓名' : '員編') + '<br>' + esc(T.emptyVerb) + '</div>';
+        return;
+      }
+      var ql = q.toLowerCase();
+      var matches = PEOPLE.filter(function (p) {
+        return MODE === 'name'
+          ? (p.name || '').toLowerCase().indexOf(ql) !== -1
+          : (p.employeeId || '').toLowerCase().indexOf(ql) !== -1;
+      }).slice(0, 30);
+
+      if (!matches.length) {
+        box.innerHTML = '<div class="state">查無「' + esc(q) + '」<br><span style="font-size:13px;font-weight:600">確認沒打錯，或試試' +
+          (MODE === 'name' ? '用員編找' : '用姓名找') + '；仍找不到請洽現場工作人員。</span></div>';
+        return;
+      }
+
+      var html = '<ul class="list">';
+      matches.forEach(function (p) {
+        var done = redeemedOf(p);
+        var badge, cls = '', icon = '🏃';
+        if (IS_COFFEE) {
+          if (done) { badge = '<span class="badge done">✓ 已領取</span>'; cls = 'done'; icon = '🏁'; }
+          else if (!p.coffeeEligible) { badge = '<span class="badge locked">未登記</span>'; cls = 'locked'; icon = '🔒'; }
+          else { badge = '<span class="badge coffee">☕ 可領</span>'; }
+        } else {
+          var veg = isVeg(p.meal);
+          if (done) { badge = '<span class="badge done">✓ 已領取</span>'; cls = 'done'; icon = '🏁'; }
+          else { badge = '<span class="badge ' + (veg ? 'veg' : 'meat') + '">' + esc(shortMeal(p.meal)) + '</span>'; }
+        }
+        html += '<li class="' + cls + '" onclick="choose(' + p.row + ')">' +
+          '<div class="person-main"><span class="runner">' + icon + '</span>' +
+          '<span class="person-text"><span class="person-name">' + esc(p.name || '(未填姓名)') + '</span>' +
+          '<span class="person-sub">ID ' + esc(p.employeeId || '—') + '</span></span></div>' + badge + '</li>';
+      });
+      html += '</ul>';
+      box.innerHTML = html;
+      hint.textContent = '▶ 點一下你的名字' + (IS_COFFEE ? '領咖啡券' : '確認領取');
+    }
+
+    function findPerson(row) {
+      for (var i = 0; i < PEOPLE.length; i++) if (PEOPLE[i].row === row) return PEOPLE[i];
+      return null;
+    }
+    function openOverlay(inner) {
+      document.getElementById('sheetBody').innerHTML = inner;
+      document.getElementById('overlay').classList.add('show');
+    }
+    function closeOverlay() { document.getElementById('overlay').classList.remove('show'); selected = null; }
+
+    function choose(row) {
+      var p = findPerson(row);
+      if (!p) return;
+      selected = p;
+
+      if (IS_COFFEE && !p.coffeeEligible) {
+        showResult({ status: 'not_eligible', name: p.name }, p);
+        return;
+      }
+      if (redeemedOf(p)) {
+        showResult({ status: 'already', name: p.name, meal: p.meal, time: IS_COFFEE ? p.coffeeTime : p.breakfastTime }, p);
+        return;
+      }
+      var cardHtml, cardCls;
+      if (IS_COFFEE) { cardHtml = '☕ 咖啡券 × 1<br><span style="font-size:13px">爬完 22F 的獎勵</span>'; cardCls = 'coffee'; }
+      else { cardHtml = esc(p.meal || '（未填餐點）'); cardCls = isVeg(p.meal) ? '' : 'meat'; }
+
+      openOverlay(
+        '<h2 class="label">' + esc(T.confirmLabel) + '</h2>' +
+        '<div class="confirm-name">' + esc(p.name) + '</div>' +
+        '<div class="meal-card ' + cardCls + '">' + cardHtml + '</div>' +
+        '<div class="hint-arrow">⬇ 按下面按鈕才算完成領取</div>' +
+        '<button class="btn btn-primary pulse-once" id="confirmBtn" onclick="confirmCheckIn()">' + esc(T.getBtn) + '</button>' +
+        '<button class="btn btn-ghost" onclick="closeOverlay()">不是我，返回</button>'
+      );
+    }
+
+    /**
+     * 樂觀 UI：按下確認「立刻」顯示成功畫面（名次先放 …），寫入在背景進行。
+     * 使用者的等待時間 = 0，不再被網路與 Apps Script 框架的固定成本（約 1~2 秒）卡住。
+     * 背景寫入完成後由 finishCheckIn 補上名次；萬一失敗會退回並顯示錯誤請他重按。
+     */
+    function confirmCheckIn() {
+      if (!selected) return;
+      var p = selected;
+      showResult({ status: 'success', name: p.name, meal: p.meal, ordinal: null }, p);
+      var t0 = Date.now();
+      rpc('checkIn', { type: APP_MODE, row: p.row, id: p.employeeId },
+        function (res) { logTiming('checkIn 背景寫入（使用者已先看到成功畫面）', t0, res); finishCheckIn(res, p); },
+        function (err) { logTiming('checkIn 背景寫入失敗', t0, null); finishCheckIn({ status: 'error', message: (err && err.message) || '連線失敗，請再試一次。' }, p); });
+    }
+
+    /** 背景寫入的結果回來後：成功就補名次，失敗就退回樂觀標記並顯示真實結果 */
+    function finishCheckIn(res, p) {
+      res = res || { status: 'error', message: '未知錯誤' };
+      if (res.status === 'success') {
+        var el1 = document.getElementById('ordinalNum');
+        var el2 = document.getElementById('ordinalNum2');
+        if (el1) el1.textContent = res.ordinal;
+        if (el2) el2.textContent = res.ordinal;
+        var local = findPerson(p.row);
+        if (local && res.time) {
+          if (IS_COFFEE) local.coffeeTime = res.time; else local.breakfastTime = res.time;
+        }
+        return;
+      }
+      // 沒成功：先退掉剛剛樂觀標記的「已領取」，再顯示伺服器的真實結果
+      // （already 會在 showResult 裡重新標回 true，並帶上正確的領取時間）
+      var local2 = findPerson(p.row);
+      if (local2) {
+        if (IS_COFFEE) local2.coffeeRedeemed = false; else local2.breakfastRedeemed = false;
+      }
+      showResult(res, p);
+    }
+
+    function showResult(res, p) {
+      res = res || { status: 'error', message: '未知錯誤' };
+      if (p && (res.status === 'success' || res.status === 'already')) {
+        var local = findPerson(p.row);
+        if (local) {
+          if (IS_COFFEE) { local.coffeeRedeemed = true; if (res.time) local.coffeeTime = res.time; }
+          else { local.breakfastRedeemed = true; if (res.time) local.breakfastTime = res.time; }
+        }
+      }
+
+      var html = '';
+      if (res.status === 'success') {
+        var line = IS_COFFEE ? '☕ 咖啡券 × 1' : esc(res.meal || '');
+        // ordinal 為 null＝樂觀 UI 先上畫面、名次還在背景算，先顯示 …（finishCheckIn 會補）
+        var ord = (res.ordinal === null || res.ordinal === undefined) ? '…' : res.ordinal;
+        html =
+          '<div class="result success"><div class="icon-circle">✓</div>' +
+          '<h2>' + esc(T.successTitle) + '</h2>' +
+          '<p>' + esc(res.name || '') + '</p>' +
+          '<p class="meal-line">' + line + '</p>' +
+          '<div class="ordinal-wrap"><div class="ordinal-label">' + esc(T.rankLabel) + '</div>' +
+          '<div class="ordinal">🏆 NO.<span id="ordinalNum">' + esc(ord) + '</span></div></div>' +
+          '<p style="margin-top:10px">你是今天第 <span id="ordinalNum2">' + esc(ord) + '</span> ' + esc(T.rankNoun) + '的同仁！</p></div>' +
+          '<div id="towelSlot">' + towelBlockHtml(p && findPerson(p.row) || p) + '</div>' +
+          '<button class="btn btn-primary" style="margin-top:18px" onclick="closeOverlay()">完成</button>';
+      } else if (res.status === 'already') {
+        html =
+          '<div class="result already"><div class="icon-circle">⏱️</div>' +
+          '<h2>你已經領過囉</h2>' +
+          '<p>' + esc(res.name || '') + (res.time ? '　已於 ' + esc(res.time) + ' 領取' : '') + '</p>' +
+          '<p style="font-size:13px">如有疑問請洽現場工作人員。</p></div>' +
+          '<div id="towelSlot">' + towelBlockHtml(p && findPerson(p.row) || p) + '</div>' +
+          '<button class="btn btn-primary" style="margin-top:18px" onclick="closeOverlay()">知道了</button>';
+      } else if (res.status === 'not_eligible') {
+        html =
+          '<div class="result locked"><div class="icon-circle">🔒</div>' +
+          '<h2>未登記咖啡券</h2>' +
+          '<p>' + esc(res.name || '') + ' 報名時沒有勾選咖啡券，<br>無法領取。如有疑問請洽現場工作人員。</p></div>' +
+          '<button class="btn btn-primary" style="margin-top:18px" onclick="closeOverlay()">返回</button>';
+      } else if (res.status === 'not_found') {
+        html =
+          '<div class="result error"><div class="icon-circle">❓</div>' +
+          '<h2>查無報名資料</h2>' +
+          '<p>名單上找不到你，請洽現場工作人員協助。</p></div>' +
+          '<button class="btn btn-primary" style="margin-top:18px" onclick="closeOverlay()">返回</button>';
+      } else {
+        html =
+          '<div class="result error"><div class="icon-circle">⚠️</div>' +
+          '<h2>發生錯誤</h2><p class="err-msg">' + esc(res.message || '請再試一次') + '</p></div>' +
+          '<button class="btn btn-primary" style="margin-top:18px" onclick="retryOrClose()">再試一次</button>';
+      }
+      openOverlay(html);
+      if (res.status === 'success' || res.status === 'already' || res.status === 'not_found' || res.status === 'not_eligible') render();
+    }
+
+    function confirmTowel() {
+      if (!selected) return;
+      var btn = document.getElementById('towelBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '處理中…'; }
+      var p = selected, t0 = Date.now();
+      rpc('redeemTowel', { id: p.employeeId },
+        function (res) {
+          logTiming('redeemTowel 領毛巾', t0, res);
+          applyTowelResult(res, p);
+        },
+        function (err) {
+          logTiming('redeemTowel 失敗', t0, null);
+          applyTowelResult({ status: 'error', message: (err && err.message) || '連線失敗，請再試一次。' }, p);
+        });
+    }
+
+    function applyTowelResult(res, p) {
+      res = res || { status: 'error', message: '未知錯誤' };
+      var local = findPerson(p.row) || p;
+
+      if (res.status === 'success' || res.status === 'already') {
+        local.towelRedeemed = true;
+        if (res.time) local.towelTime = res.time;
+      } else if (res.status === 'blocked') {
+        local.towelBlocked = true;
+      }
+
+      var slot = document.getElementById('towelSlot');
+      if (!slot) return;
+
+      if (res.status === 'success') {
+        slot.innerHTML = '<div class="towel-sep"></div>' +
+          '<div class="towel-card hit">🏅 活動毛巾 GET!<br>' +
+          '<span style="font-size:13px">已於 ' + esc(res.time) + ' 領取</span></div>';
+      } else if (res.status === 'not_found') {
+        slot.innerHTML = '<div class="towel-sep"></div>' +
+          '<div class="towel-card warn">🏅 毛巾名單上找不到你<br>' +
+          '<span style="font-size:13px">請洽現場工作人員</span></div>';
+      } else if (res.status === 'not_eligible') {
+        slot.innerHTML = '<div class="towel-sep"></div>' +
+          '<div class="towel-card">🏅 毛巾進度 ' + esc(res.count) + ' / ' + esc(res.threshold) + '</div>';
+      } else if (res.status === 'error') {
+        slot.innerHTML = '<div class="towel-sep"></div>' +
+          '<div class="towel-card warn">⚠️ ' + esc(res.message || '毛巾領取失敗，請洽現場工作人員') + '</div>';
+      } else {
+        slot.innerHTML = towelBlockHtml(local);
+      }
+    }
+
+    function retryOrClose() { closeOverlay(); render(); }
+
+    document.getElementById('overlay').addEventListener('click', function (e) { if (e.target === this) closeOverlay(); });
+
+    applyTheme();
+    loadRoster();
   </script>
 </body>
 </html>
