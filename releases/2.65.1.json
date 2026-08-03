@@ -1,0 +1,18 @@
+{
+  "version": "2.65.1",
+  "platforms": ["iOS"],
+  "releaseDate": "2026-07-27",
+  "summary": "iOS 專用的修正版，只處理一件事：2.65.0 上線的語音直播，在部分情況下會讓 App 閃退。7/27 送出修正版，Android 沒有這個問題、不需另外發版。",
+  "features": [],
+  "bugfixes": [
+    {
+      "key": "HRTX-16180",
+      "title": "語音直播造成 App 機率性閃退",
+      "platform": "iOS",
+      "before": "進出語音直播時，App 有機率閃退。Crashlytics 上約影響 12 位用戶、佔放量人數 0.1%、影響 0.04% 的使用階段，比例不高，但打到的是 2.65.0 的主打功能。",
+      "after": "修掉同時取用戶資料引發的競爭狀況，閃退不再發生。",
+      "ai": true
+    }
+  ],
+  "backend": []
+}
