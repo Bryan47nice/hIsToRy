@@ -48,9 +48,11 @@ function featureCard(it) {
   </div>`;
 }
 function bugCard(it) {
+  // tag：這張 Bug 的來源。「開發階段」＝測試期間就修掉、沒進到線上，用戶沒遇過
+  const tag = it.tag ? `<span class="tag-stage">${esc(it.tag)}</span>` : '';
   return `<div class="card bug">
     <div class="card-head"><span class="card-title">${esc(it.title)}</span>${jira(it.key)}</div>
-    <div class="meta"><span class="plat">${esc(it.platform||'')}</span>${aiTag(it.ai)}</div>
+    <div class="meta"><span class="plat">${esc(it.platform||'')}</span>${tag}${aiTag(it.ai)}</div>
     <div class="row"><span class="lbl">原本</span><span class="val">${esc(it.before)}</span></div>
     <div class="row"><span class="lbl">修好後</span><span class="val">${esc(it.after)}</span></div>
   </div>`;
@@ -127,6 +129,7 @@ const STYLE = `
 .plat{font-size:11.5px;color:var(--mut)}
 .tag-ai{font-size:11px;background:#2a2440;color:#c4b5fd;border:1px solid #43386b;border-radius:99px;padding:1px 8px}
 .tag-human{font-size:11px;background:#23362a;color:#86efac;border:1px solid #2f5640;border-radius:99px;padding:1px 8px}
+.tag-stage{font-size:11px;background:#2b2620;color:#fcd34d;border:1px solid #574a2f;border-radius:99px;padding:1px 8px}
 .row{display:flex;gap:10px;margin:4px 0;font-size:14px}
 .lbl{flex:0 0 46px;color:var(--mut);font-size:12.5px;padding-top:1px}
 .val{flex:1;color:#dde1e7}

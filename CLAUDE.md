@@ -24,8 +24,10 @@ release-board/
 
 ## 內容規則（重要，別改壞）
 
-- **新功能**只收 Jira `issuetype = Epic`；**Bug 修復**只收 `issuetype = Bug`。
-- **不收** `Task`（RD 實作子單／埋點）與 `Stage-bug`（測試階段修掉、用戶沒遇到過）——避免雜訊。
+- **新功能**只收 Jira `issuetype = Epic`；**Bug 修復**收 `issuetype = Bug` 與 `Stage-bug`。
+- **不收** `Task`（RD 實作子單／埋點）——避免雜訊。狀態 `won't fixed` 的也不收（沒修就不是修復）。
+- **Stage-bug 要分兩群**（2026-08-04 起）：QA 跑的是回歸測試，抓到的不全是本版新功能做壞的，也可能是線上某版就開始壞、這次才被驗出來。判斷看單上的【App version】——寫舊版號或「線上版機能性測試」＝**線上既有**，當一般 Bug 修復列、不加標籤；寫本版 beta／staging 且問題打在本版新功能上＝**開發階段修掉**，在該筆 JSON 加 `"tag": "開發階段修掉"`（卡片會出黃色標籤），`after` 也寫明沒有進到線上。灰色地帶（本版 build 驗到、但打的是既有功能）先歸線上既有，並在確認清單標出來讓 PM 裁。
+- 這條規則**從 2.66.0 起套用**，2.63.0～2.65.1 維持原樣不回補。
 - **白話來源（混合）**：Jira 單描述開頭若有 `【對外說明】...` → 用人工版、標 `✍️ 人工`；否則由 AI 從描述濃縮兩句、標 `🤖 AI摘要`。
 - **後端區塊**：貼了 `release-note-backend` label 的單，進「⚙️ 後端／設定調整（免更新 App）」區塊，依完成日排序。
 
@@ -38,7 +40,10 @@ release-board/
 
 ## releases/*.json 結構
 
-照 `releases/2.63.0.json` 的格式：`version`、`platforms`、`releaseDate`、`summary`、`features[]`（key/title/platform/plain/impact/ai）、`bugfixes[]`（key/title/platform/before/after/ai）、`backend[]`。
+照 `releases/2.63.0.json` 的格式：`version`、`platforms`、`releaseDate`、`summary`、`features[]`（key/title/platform/plain/impact/ai）、`bugfixes[]`（key/title/platform/before/after/ai，另有選填的 `tag`）、`backend[]`。
+
+- `bugfixes[].tag`：選填，目前只用 `"開發階段修掉"`（見上方 Stage-bug 規則），會在卡片上渲染成黃色小標籤。不填就是一般 Bug 修復。
+- 雙平台發布日不同時，`releaseDate` 填先發的那天，另一平台的日期寫在 `summary` 結尾（例：「（iOS 8/3、Android 8/4 發布）」）。
 
 ## 建置與部署
 
