@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /*
- * 同學會 App 版本更新看板 — 產生器  v1.1.0
+ * 同學會 App 版本更新看板 — 產生器  v1.2.0
  * 用法： BOARD_PASSWORD=你的密碼 node build.js
  * 讀 releases/*.json → 產生加密過的 index.html
+ * 測試時可用 BOARD_OUT=別的路徑 避免覆蓋正式 index.html
  */
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +12,7 @@ const crypto = require('crypto');
 const JIRA_BASE = 'https://cmoneyteam.atlassian.net/browse/';
 const ROOT = __dirname;
 const RELEASE_DIR = path.join(ROOT, 'releases');
-const OUT = path.join(ROOT, 'index.html');
+const OUT = process.env.BOARD_OUT ? path.resolve(process.env.BOARD_OUT) : path.join(ROOT, 'index.html');
 
 const PASSWORD = process.env.BOARD_PASSWORD;
 if (!PASSWORD) {
@@ -65,17 +66,31 @@ function backendCard(it) {
   </div>`;
 }
 
-function section(title, cls, items, render) {
-  if (!items || !items.length) return '';
-  return `<section class="sec ${cls}"><h3>${title}<span class="cnt">${items.length}</span></h3>${items.map(render).join('')}</section>`;
+// 一欄：固定高度、內容超出在欄內滾動。empty 是沒資料時顯示的文字；none 是搜尋沒命中時的文字
+function column(title, cls, items, render, empty, none) {
+  const list = items || [];
+  const body = list.length ? list.map(render).join('') : `<div class="col-empty">${empty}</div>`;
+  return `<section class="col ${cls}">
+    <div class="col-head"><span class="bar"></span>${title}<span class="cnt" data-total="${list.length}">${list.length}</span></div>
+    <div class="col-body">${body}<div class="col-none">${none}</div></div>
+  </section>`;
+}
+
+// 搜尋框：ver 為 true 是版本內搜尋，否則是頁面最上方的全站搜尋
+function searchBox(placeholder, label) {
+  return `<div class="search">
+    <span class="ico">🔍</span>
+    <input type="search" placeholder="${placeholder}" aria-label="${label}" autocomplete="off">
+    <button class="clr" type="button" aria-label="清除搜尋">✕</button>
+  </div>`;
 }
 
 // idx===0 → 最新版，預設展開
 function versionBlock(r, idx) {
   const open = idx === 0;
-  const counts = `${(r.features||[]).length} 新功能 · ${(r.bugfixes||[]).length} Bug` +
-    ((r.backend||[]).length ? ` · ${(r.backend||[]).length} 後端` : '');
-  return `<article class="ver${open?' open':''}">
+  const nf = (r.features||[]).length, nb = (r.bugfixes||[]).length, ne = (r.backend||[]).length;
+  const counts = `<i class="c-feat">${nf} 新功能</i><i class="c-bug">${nb} Bug</i>` + (ne ? `<i class="c-be">${ne} 後端</i>` : '');
+  return `<article class="ver${open?' open':''}" data-open="${open}">
     <header class="ver-head" role="button" tabindex="0" aria-expanded="${open}">
       <div class="vtop"><span class="chev">▸</span><span class="vnum">v${esc(r.version)}</span>
         <span class="vplat">${esc((r.platforms||[]).join(' / '))}</span>
@@ -84,9 +99,12 @@ function versionBlock(r, idx) {
       <p class="vsum">${esc(r.summary)}</p>
     </header>
     <div class="ver-body">
-      ${section('✨ 新功能','s-feat',r.features,featureCard)}
-      ${section('🐛 Bug 修復','s-bug',r.bugfixes,bugCard)}
-      ${section('⚙️ 後端／設定調整（免更新 App）','s-be',r.backend,backendCard)}
+      <div class="tools">${searchBox('搜尋這版的標題、內文或單號…', `搜尋 v${esc(r.version)} 內容`)}<span class="hint"></span></div>
+      <div class="cols">
+        ${column('✨ 新功能','feat',r.features,featureCard,'本版沒有新功能','沒有符合的新功能')}
+        ${column('🐛 Bug 修復','bug',r.bugfixes,bugCard,'本版沒有 Bug 修復','沒有符合的 Bug')}
+      </div>
+      ${ne ? column('⚙️ 後端／設定調整（免更新 App）','be be-row',r.backend,backendCard,'','沒有符合的後端調整') : ''}
     </div>
   </article>`;
 }
@@ -94,17 +112,20 @@ function versionBlock(r, idx) {
 const board = `
 <div class="wrap">
   <header class="top"><h1>📱 同學會 App 版本更新看板</h1>
-    <p class="sub">每次有新版本發佈會更新此頁。點版本標題可展開／收合。資料來源：Jira（HRTX）。</p></header>
+    <p class="sub">每次有新版本發佈會更新此頁。點版本標題可展開／收合。資料來源：Jira（HRTX）。</p>
+    <div class="tools gtools">${searchBox('搜尋所有版本：功能名、Bug 描述或單號…', '搜尋所有版本')}<span class="hint"></span></div>
+  </header>
   ${releases.map(versionBlock).join('')}
   <footer class="foot">最後更新：${new Date().toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}　·　🤖 AI摘要 表示文字由系統自動產生，可校稿</footer>
 </div>`;
 
 const STYLE = `
-:root{--bg:#0f1115;--card:#1a1d24;--feat:#3b82f6;--bug:#ef4444;--be:#a855f7;--tx:#e8eaed;--mut:#9aa0a6;--line:#2a2e37}
+:root{--bg:#0f1115;--card:#1a1d24;--feat:#3b82f6;--bug:#ef4444;--be:#a855f7;--tx:#e8eaed;--mut:#9aa0a6;--line:#2a2e37;--colbg:#0f1218;--colh:520px}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.6}
-.wrap{max-width:860px;margin:0 auto;padding:28px 18px 60px}
-.top h1{font-size:26px;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 18px;font-size:14px}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+.top h1{font-size:26px;margin:0 0 6px}.sub{color:var(--mut);margin:0 0 12px;font-size:14px}
 .ver{background:#13161c;border:1px solid var(--line);border-radius:14px;padding:6px 20px 4px;margin:14px 0}
+.ver.gone{display:none}
 .ver-head{cursor:pointer;padding:14px 0;user-select:none;outline:none}
 .ver-head:hover .vnum{color:#9ec0ff}
 .vtop{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
@@ -113,28 +134,64 @@ const STYLE = `
 .vnum{font-size:21px;font-weight:700}
 .vplat{font-size:12px;background:#222732;border:1px solid var(--line);padding:2px 10px;border-radius:99px;color:#cfd3da}
 .vdate{font-size:13px;color:var(--mut)}
-.vmini{font-size:12px;color:#7e879a;margin-left:auto}
+.vmini{font-size:12px;color:#7e879a;margin-left:auto;display:flex;gap:10px}
+.vmini i{font-style:normal;display:inline-flex;align-items:center;gap:4px}
+.vmini i::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
+.vmini .c-feat{--c:var(--feat)}.vmini .c-bug{--c:var(--bug)}.vmini .c-be{--c:var(--be)}
 .vsum{margin:8px 0 2px 22px;color:#c7ccd4;font-size:14.5px;border-left:3px solid #2f6df6;padding-left:10px}
-.ver-body{display:none;padding-bottom:14px}
+.ver-body{display:none;padding-bottom:16px}
 .ver.open .ver-body{display:block}
-.sec{margin-top:16px}.sec h3{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
-.cnt{font-size:12px;background:#222732;color:#cfd3da;border-radius:99px;padding:1px 9px}
-.card{background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:13px 15px;margin:9px 0}
+.cnt{font-size:12px;background:#222732;color:#cfd3da;border-radius:99px;padding:1px 9px;font-weight:500;font-variant-numeric:tabular-nums}
+/* 搜尋 */
+.tools{display:flex;align-items:center;gap:10px;margin-top:12px}
+.gtools{margin:0 0 6px}
+.search{position:relative;flex:1;max-width:420px}
+.gtools .search{max-width:520px}
+.search input{width:100%;padding:8px 34px 8px 34px;font-size:14px;border-radius:9px;border:1px solid var(--line);background:var(--colbg);color:var(--tx);outline:none;font-family:inherit}
+.search input:focus{border-color:#2f6df6;box-shadow:0 0 0 3px rgba(47,109,246,.25)}
+.search input::-webkit-search-cancel-button{display:none}
+.search .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--mut);font-size:14px;pointer-events:none}
+.search .clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--mut);cursor:pointer;font-size:15px;padding:4px 6px;line-height:1;display:none}
+.search.has .clr{display:block}
+.search .clr:hover{color:var(--tx)}
+.hint{font-size:12.5px;color:var(--mut)}
+.hint b{color:#cfd3da;font-weight:600;font-variant-numeric:tabular-nums}
+mark{background:#5a4a12;color:#ffe08a;border-radius:3px;padding:0 2px}
+.card.hide{display:none}
+/* 雙欄：左新功能、右 Bug；固定同高、欄內滾動 */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.col{background:var(--colbg);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0}
+.col-head{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600;background:#12151c;flex:none}
+.col-head .bar{width:4px;height:16px;border-radius:2px;background:var(--c)}
+.col.feat{--c:var(--feat)}.col.bug{--c:var(--bug)}.col.be{--c:var(--be)}
+.col-body{max-height:var(--colh);overflow-y:auto;padding:4px 12px 12px;scrollbar-width:thin;scrollbar-color:#3a4050 transparent;overscroll-behavior:contain}
+.col-body::-webkit-scrollbar{width:8px}
+.col-body::-webkit-scrollbar-thumb{background:#3a4050;border-radius:99px}
+.col::after{content:"";position:absolute;left:0;right:8px;bottom:0;height:34px;background:linear-gradient(transparent,var(--colbg));pointer-events:none;transition:opacity .15s}
+.col.at-end::after{opacity:0}
+.col-empty,.col-none{color:var(--mut);font-size:13.5px;padding:28px 0;text-align:center}
+.col-none{display:none}
+.col.none .col-none{display:block}
+.be-row{margin-top:16px}
+.be-row .col-body{max-height:220px}
+.card{background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:11px 13px;margin:9px 0}
 .card.feat{border-left-color:var(--feat)}.card.bug{border-left-color:var(--bug)}.card.be{border-left-color:var(--be)}
 .card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.card-title{font-weight:600;font-size:15.5px}
-.jira{font-size:12.5px;color:#7eb0ff;text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.card-title{font-weight:600;font-size:14.5px}
+.jira{font-size:12px;color:#7eb0ff;text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums}
 .jira:hover{text-decoration:underline}
-.meta{margin:5px 0 9px;display:flex;gap:8px;align-items:center}
+.meta{margin:4px 0 7px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .plat{font-size:11.5px;color:var(--mut)}
 .tag-ai{font-size:11px;background:#2a2440;color:#c4b5fd;border:1px solid #43386b;border-radius:99px;padding:1px 8px}
 .tag-human{font-size:11px;background:#23362a;color:#86efac;border:1px solid #2f5640;border-radius:99px;padding:1px 8px}
 .tag-stage{font-size:11px;background:#2b2620;color:#fcd34d;border:1px solid #574a2f;border-radius:99px;padding:1px 8px}
-.row{display:flex;gap:10px;margin:4px 0;font-size:14px}
+.row{display:flex;gap:10px;margin:3px 0;font-size:13.5px}
 .lbl{flex:0 0 46px;color:var(--mut);font-size:12.5px;padding-top:1px}
 .val{flex:1;color:#dde1e7}
 .foot{margin-top:26px;color:var(--mut);font-size:12px;text-align:center}
-@media(max-width:480px){.lbl{flex-basis:40px}.vmini{display:none}.vsum{margin-left:0}}
+@media(max-width:760px){.cols{grid-template-columns:1fr}.col-body{max-height:360px}.vmini{display:none}.vsum{margin-left:0}.search{max-width:none}}
+@media(max-width:480px){.lbl{flex-basis:40px}.tools{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.chev,.col::after{transition:none}}
 `;
 
 // ---------- 加密（AES-256-GCM + PBKDF2-SHA256） ----------
@@ -177,15 +234,92 @@ const html = `<!DOCTYPE html>
 <script>
 const META=${JSON.stringify(meta)};
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+function setOpen(v,open){v.classList.toggle('open',open);v.querySelector('.ver-head').setAttribute('aria-expanded',open);}
 function initCollapse(){
   document.querySelectorAll('#app .ver-head').forEach(function(h){
-    h.addEventListener('click',function(){
-      var v=h.closest('.ver');var open=v.classList.toggle('open');
-      h.setAttribute('aria-expanded',open);
+    h.addEventListener('click',function(){var v=h.closest('.ver');setOpen(v,!v.classList.contains('open'));});
+    h.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();h.click();}});
+  });
+}
+// 欄底漸層：滾到底就淡掉
+function initColumns(){
+  document.querySelectorAll('#app .col').forEach(function(col){
+    var body=col.querySelector('.col-body');
+    var chk=function(){col.classList.toggle('at-end',body.scrollHeight-body.scrollTop-body.clientHeight<4);};
+    body.addEventListener('scroll',chk);
+    if(window.ResizeObserver)new ResizeObserver(chk).observe(body);
+    chk();col._chk=chk;
+  });
+}
+// ---- 搜尋：純前端過濾，比對標題／內文／單號，命中反白 ----
+var escRe=function(s){return s.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&');};
+var escHtml=function(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+function markHtml(html,q){
+  var re=new RegExp(escRe(q),'gi');
+  var tpl=document.createElement('template');tpl.innerHTML=html;
+  var w=document.createTreeWalker(tpl.content,NodeFilter.SHOW_TEXT),nodes=[];
+  while(w.nextNode())nodes.push(w.currentNode);
+  nodes.forEach(function(n){
+    if(!re.test(n.nodeValue)){re.lastIndex=0;return;}
+    re.lastIndex=0;
+    var span=document.createElement('span');
+    span.innerHTML=escHtml(n.nodeValue).replace(re,function(m){return '<mark>'+m+'</mark>';});
+    n.replaceWith.apply(n,span.childNodes);
+  });
+  return tpl.innerHTML;
+}
+// 對單一版本套用查詢字串，回傳 {hit,total}
+function filterVersion(ver,q){
+  q=(q||'').trim().toLowerCase();
+  if(!ver._cards){ver._cards=Array.prototype.map.call(ver.querySelectorAll('.card'),function(el){return {el:el,html:el.innerHTML,text:el.textContent.toLowerCase()};});}
+  var hit=0,total=0;
+  ver.querySelectorAll('.col').forEach(function(col){
+    var n=0,list=ver._cards.filter(function(c){return col.contains(c.el);});
+    list.forEach(function(c){
+      var ok=!q||c.text.indexOf(q)>-1;
+      c.el.classList.toggle('hide',!ok);
+      c.el.innerHTML=(ok&&q)?markHtml(c.html,q):c.html;
+      if(ok)n++;
     });
-    h.addEventListener('keydown',function(e){
-      if(e.key==='Enter'||e.key===' '){e.preventDefault();h.click();}
+    col.classList.toggle('none',!!q&&n===0);
+    var cnt=col.querySelector('.cnt');
+    cnt.textContent=q?n+' / '+list.length:list.length;
+    col.querySelector('.col-body').scrollTop=0;
+    if(col._chk)col._chk();
+    hit+=n;total+=list.length;
+  });
+  var box=ver.querySelector('.tools .search'),hint=ver.querySelector('.tools .hint');
+  if(!q)box.querySelector('input').value='';
+  box.classList.toggle('has',!!q);
+  hint.innerHTML=q?'命中 <b>'+hit+'</b> / '+total+' 筆':'';
+  return {hit:hit,total:total};
+}
+function wireSearch(box,onChange){
+  var input=box.querySelector('input'),clr=box.querySelector('.clr');
+  input.addEventListener('input',function(){onChange(input.value);});
+  input.addEventListener('keydown',function(e){if(e.key==='Escape'){input.value='';onChange('');}});
+  clr.addEventListener('click',function(){input.value='';onChange('');input.focus();});
+}
+function initSearch(){
+  var vers=Array.prototype.slice.call(document.querySelectorAll('#app .ver'));
+  // 版本內搜尋：只篩該版
+  vers.forEach(function(ver){
+    wireSearch(ver.querySelector('.tools .search'),function(q){filterVersion(ver,q);});
+  });
+  // 全站搜尋：每版都篩，有命中的展開、沒命中的隱藏；清空回到預設（最新展開、其餘收合）
+  var g=document.querySelector('#app .gtools');
+  var ghint=g.querySelector('.hint');
+  wireSearch(g.querySelector('.search'),function(q){
+    q=q.trim();
+    g.querySelector('.search').classList.toggle('has',!!q);
+    var hit=0,nver=0;
+    vers.forEach(function(ver){
+      ver.querySelector('.tools input').value=q;
+      var r=filterVersion(ver,q);
+      if(q){ver.classList.toggle('gone',r.hit===0);setOpen(ver,r.hit>0);if(r.hit>0)nver++;hit+=r.hit;}
+      else{ver.classList.remove('gone');setOpen(ver,ver.dataset.open==='true');}
     });
+    ghint.innerHTML=q?(hit?'命中 <b>'+hit+'</b> 筆，分佈在 <b>'+nver+'</b> 個版本':'沒有符合的項目'):'';
   });
 }
 async function unlock(pw){
@@ -196,7 +330,7 @@ async function unlock(pw){
     const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(META.iv)},key,buf);
     document.getElementById('app').innerHTML=new TextDecoder().decode(plain);
     document.getElementById('gate').style.display='none';
-    initCollapse();
+    initCollapse();initColumns();initSearch();
     try{sessionStorage.setItem('rb_pw',pw)}catch(e){}
   }catch(e){document.getElementById('err').textContent='密碼錯誤，請再試一次';}
 }

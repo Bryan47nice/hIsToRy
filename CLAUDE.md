@@ -49,7 +49,14 @@ release-board/
 
 ```bash
 BOARD_PASSWORD=<密碼> node build.js     # 產生 index.html
+BOARD_PASSWORD=test1234 BOARD_OUT=/tmp/test.html node build.js   # 測版面用，不覆蓋正式檔
 ```
+
+## 版面（v1.2.0 起）
+
+- 每版展開後為 `.cols` 雙欄 grid（左 `.col.feat` 新功能、右 `.col.bug` Bug），欄高由 CSS 變數 `--colh`（520px）控制，`.col-body` 內滾；後端 `.col.be.be-row` 整寬放兩欄下方，沒資料就不輸出。
+- 搜尋全在外殼 JS（解密後 `initSearch()`）：`filterVersion(ver,q)` 對單一版本過濾＋反白；全站搜尋逐版呼叫它，並用 `article[data-open]` 記住預設展開狀態以便清空還原。卡片原始 HTML 快取在 `ver._cards`，反白用 TreeWalker 只碰文字節點。
+- 外殼 JS 寫在 template literal 裡，正則裡的 `${` 要寫成 `\${`、反斜線要雙寫。
 
 - 加密：AES-256-GCM + PBKDF2-SHA256（20 萬次迭代）。密碼**只在建置時用環境變數注入，絕不寫進任何檔案／不提交到 repo**（repo 是 Public，只能放密文）。
 - 密碼由使用者口頭提供，不要寫死在程式或本檔。
@@ -71,9 +78,8 @@ BOARD_PASSWORD=<密碼> node build.js     # 產生 index.html
 
 ## 目前狀態（接手時）
 
-- 已完成 **v1.1.0**：在 v1.0.0（三區塊看板＋Jira 串接＋前端加密）基礎上，新增「版本收合（最新展開其餘收合）」與「密碼顯示切換」。
-- `index.html` 已用使用者提供的密碼產好並驗證（解密 OK、錯誤密碼被擋）。
-- **待辦**：把目前的 `index.html`（v1.1.0）commit + push 到 `Bryan47nice/hIsToRy`，覆蓋 repo 上 v1.0.0 那版。repo 目前可能只有 index.html，建議把 `build.js`、`releases/`、`README.md`、`CLAUDE.md` 一併提交，方便日後自動化。
+- 已完成 **v1.2.0**（2026-09-10）：雙欄版面（左新功能／右 Bug、固定高內滾）＋全站與版本內搜尋。原始碼已 commit；線上 `index.html` 要等使用者提供密碼重 build 後 push 才會換成新版面。
+- 這個 repo 有兩個本機工作資料夾（`D:\claude47\hIsToRy` 與 `C:\Users\user1\Documents\Claude\Projects\流量\release-board`），動手前先 `git pull --ff-only`，避免在舊 base 上改。
 
 ## 使用者的協作偏好
 
