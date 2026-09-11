@@ -13,6 +13,8 @@ release-board/
 ├─ releases/
 │   └─ 2.63.0.json       每個版本一個 JSON（新增版本就多一個檔）
 ├─ index.html            產生出來的成品（加密過，這個才上傳到 GitHub）
+├─ checkin.html          ⚠ 與看板無關：「爬樓梯吃早餐」活動簽到頁，暫借本 repo 的 Pages 託管，
+│                          兩張實體 QR 指向它。別刪；搬遷方式見 D:\健康生活組\設定說明.md 第九節
 └─ README.md             本說明
 ```
 

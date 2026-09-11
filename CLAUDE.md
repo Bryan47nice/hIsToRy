@@ -88,3 +88,5 @@ BOARD_PASSWORD=test1234 BOARD_OUT=/tmp/test.html node build.js   # 測版面用�
 ## 額外檔案：checkin.html（別刪）
 
 `checkin.html` 是「爬樓梯吃早餐」活動的靜態簽到頁（由 D:健康生活組make_static.js 從 Index.html 產生），與本看板（index.html / build.js）無關、不參與 build 流程。資料走匿名 fetch 打 Apps Script API，繞過 Google 帳號路由。QR 印的是這頁的網址；換部署時改 make_static.js 的 EXEC 重跑再 push，QR 不用重印。
+
+本 repo 是個人帳號，簽到頁只是暫借託管。搬遷步驟與緊急替代方案見 `D:\健康生活組\設定說明.md` 第九節；搬走後這裡的 checkin.html 應改成跳轉頁而非刪除。
