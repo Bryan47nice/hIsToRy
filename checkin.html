@@ -248,15 +248,44 @@
   <script>
   // 靜態版設定：資料走匿名 fetch 打 Apps Script API（不帶 cookie＝不受帳號路由影響）
   window.CHECKIN_API_BASE = 'https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec';
-  // API 打不通時的降級：給出直接開 /exec 的按鈕（含 u/0 備用通道）
-  window.STATIC_FALLBACK = function () {
+  // API 打不通時的降級：給出直接開 /exec 的按鈕。
+  // Android 的 Drive App 會攔截 script.google.com 連結並顯示「無法開啟這個檔案」，
+  // 所以 Android 用 intent:// 指定 Chrome 開啟；其他平台維持一般連結。
+  window.STATIC_FALLBACK = function (err) {
     var type = /[?&]type=coffee/.test(location.search) ? 'coffee' : 'breakfast';
+    var plain = 'https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type;
+    var backup = 'https://script.google.com/macros/u/0/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type;
+    var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    var isAndroid = /Android/i.test(ua);
+    var primary = isAndroid
+      ? 'intent://' + plain.replace(/^https?:\/\//, '') +
+        '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' +
+        encodeURIComponent(plain) + ';end'
+      : plain;
+    var msg = String((err && err.message) || '');
+    var reason = /JSON|Unexpected token|HTTP \d/.test(msg)
+      ? '（工作人員請注意：後端 API 回應異常，可能是 Apps Script 部署還沒更新到新版本）'
+      : '（連線逾時或無網路，換個網路再試）';
     document.getElementById('eventName').textContent = '連線備援模式';
     document.getElementById('content').innerHTML =
-      '<div class="state">😵 即時連線失敗，改用直接開啟：<br><br>' +
-      '<a class="btn btn-primary" style="display:block;text-decoration:none;margin-bottom:10px" href="https://script.google.com/macros/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type + '">開啟簽到頁</a>' +
-      '<a class="btn btn-ghost" style="display:block;text-decoration:none" href="https://script.google.com/macros/u/0/s/AKfycbxj8gfaEoIurFBbkiKUgogF_Ms67xqNJyCVsrVarrqirKORmMvG_-vkuv2hTOQNX3gDBQ/exec?type=' + type + '">備用通道</a>' +
+      '<div class="state">😵 即時連線失敗，改用直接開啟：<br>' +
+      '<span style="font-size:12px;opacity:.75">' + reason + '</span><br><br>' +
+      '<a class="btn btn-primary" style="display:block;text-decoration:none;margin-bottom:10px" href="' + primary + '">開啟簽到頁' + (isAndroid ? '（用 Chrome）' : '') + '</a>' +
+      '<a class="btn btn-ghost" style="display:block;text-decoration:none;margin-bottom:10px" href="' + backup + '">備用通道</a>' +
+      '<button type="button" class="btn btn-ghost" style="display:block;width:100%" id="copyUrlBtn">複製網址</button>' +
+      '<div id="copyHint" style="font-size:12px;margin-top:6px;min-height:1.2em"></div>' +
       '<br><span style="font-size:13px;font-weight:600">還是不行請找現場工作人員，口頭報名字一樣可以領！</span></div>';
+    var btn = document.getElementById('copyUrlBtn');
+    if (btn && btn.addEventListener) {
+      btn.addEventListener('click', function () {
+        var hint = document.getElementById('copyHint');
+        function done() { hint.textContent = '已複製，請開 Chrome 貼到網址列。'; }
+        function fail() { hint.textContent = '無法自動複製，請長按下方網址手動複製：'; hint.innerHTML += '<br><span style="word-break:break-all;user-select:all">' + plain + '</span>'; }
+        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(plain).then(done, fail);
+        } else { fail(); }
+      });
+    }
   };
 </script>
   <script>
@@ -426,7 +455,7 @@
         },
         function (err) {
           // 靜態版可注入 STATIC_FALLBACK：API 打不通時退回「直接開 /exec」的按鈕頁
-          if (typeof window !== 'undefined' && window.STATIC_FALLBACK) { window.STATIC_FALLBACK(); return; }
+          if (typeof window !== 'undefined' && window.STATIC_FALLBACK) { window.STATIC_FALLBACK(err); return; }
           loadError = (err && err.message) || '連線失敗，請重新整理。';
           render();
         });
